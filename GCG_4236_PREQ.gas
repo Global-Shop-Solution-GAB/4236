@@ -1,0 +1,278 @@
+Program.Sub.ScreenSU.Start
+Gui.Form..Create
+Gui.Form..Caption("Create from History")
+Gui.Form..Size(3210,3285)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..BackColor(-2147483633)
+Gui.Form..MousePointer(0)
+Gui.Form..Sizeable(False)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form..MaxButton(False)
+Gui.Form..MinButton(False)
+Gui.Form.cmdCreate.Create(Button)
+Gui.Form.cmdCreate.Size(855,375)
+Gui.Form.cmdCreate.Position(285,2190)
+Gui.Form.cmdCreate.Caption("Create")
+Gui.Form.cmdCreate.Event(Click,cmdCreate_Click)
+Gui.Form.dtp1.Create(DatePicker)
+Gui.Form.dtp1.Size(1935,285)
+Gui.Form.dtp1.Position(270,1455)
+Gui.Form.lblDueDate.Create(Label,"Select a New Due Date",True,1935,255,0,255,1185,True,0,"Arial",8,-2147483633,0)
+Gui.Form.lblPOREQ.Create(Label,"Purchase Requisition",True,1935,255,0,195,330,True,0,"Arial",8,-2147483633,0)
+Gui.Form.txt1.Create(TextBox,"",True,1980,300,0,240,630,True,0,"Arial",8,-2147483643,1)
+Gui.Form.cmdBrowse.Create(Button)
+Gui.Form.cmdBrowse.Size(345,345)
+Gui.Form.cmdBrowse.Position(2370,600)
+Gui.Form.cmdBrowse.Caption("^")
+Gui.Form.cmdBrowse.Event(Click,cmdBrowse_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Variable.Global.sPart.Declare(String)
+Variable.Global.sLoc.Declare(String)
+Variable.Global.sReq.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+'This is a custom GAB script that will allow the user to create purchase requisitions based on purchase requisitions created in the past.
+'coded by: WAW
+'date: 10/31/16 HAPPY HALLOWEEN
+
+'opening connection
+F.ODBC.Connection!conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+'display the form
+gui.Form..Visible(true) 
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4236_PREQ.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.Main.End
+
+Program.Sub.Form_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+'close the form
+gui.Form..Visible(false)
+
+'closing connection and ending program
+F.ODBC.Connection!conx.Close
+Function.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4236_PREQ.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.End
+
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.cmdBrowse_Click.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+v.Local.stitles.Declare(string)
+v.Local.iwidths.Declare(long)
+V.Local.sret.Declare(string)
+
+f.Intrinsic.UI.SetBrowserHotTypeAhead(true)
+
+'create the custom browser
+f.Intrinsic.String.Split("Req*!*Line*!*Orig Date*!*Orig User*!*Part*!*Loc*!*Qty*!*Description*!*Cost*!*Vendor Name*!*Job*!*Suff*!*Seq","*!*",v.Local.stitles)
+f.Intrinsic.String.Split("1000*!*600*!*800*!*800*!*1600*!*400*!*1200*!*2000*!*1200*!*1600*!*800*!*400*!*800","*!*",v.Local.iwidths)
+f.Intrinsic.UI.Browser("Select a Req","conx","Select R.REQ_NUM, R.REQ_LINE, Concat(Concat(Concat(Concat(Left(R.ORIG_DATE,2),'/'),Substring(R.ORIG_DATE,3,2)),'/'),Right(R.ORIG_DATE,2)) AS ORIG_DATE, R.USER_ORIG, R.PART, R.LOCN, R.QTY, R.DESCR, R.UNIT_PRICE, V.NAME_VENDOR, R.WO, R.SUFF, R.SEQ FROM REQ_HIST R LEFT JOIN V_VENDOR_MASTER V ON R.VENDOR = V.VENDOR",v.Local.stitles,v.Local.iwidths,V.Local.sret)
+'check to make sure the user selected a po req
+Function.Intrinsic.Control.If(Variable.Local.sRet,"=","***CANCEL***")
+ 	Function.Intrinsic.UI.Msgbox("No Requisition Selected!")
+Function.Intrinsic.Control.Else
+	f.Intrinsic.String.Split(v.Local.sret,"*!*",v.Local.sret)
+	'set the req number in the textbox
+	gui.Form.txt1.Text(v.Local.sret(0))
+	v.Global.sReq.Set(v.Local.sret(0))
+	v.Global.sPart.Set(v.Local.sret(2))
+	v.Global.sLoc.Set(v.Local.sret(3))
+f.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4236_PREQ.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.cmdBrowse_Click.End
+
+Program.Sub.cmdCreate_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdBrowse_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+v.Local.sdate.Declare(string)
+v.Local.ssql.Declare(string)
+v.Local.iREQ.Declare(long)
+v.Local.sreq.Declare(string)
+v.Local.fqty.Declare(float)
+v.Local.spart.Declare(string)
+v.Local.sloc.Declare(string)
+v.Local.sqtysql.Declare(string)
+v.Local.supdatesql.Declare(string)
+V.Local.sReturn.Declare(String)
+V.Local.sAddDate.Declare(String)
+V.Local.iCenturyOrig.Declare(Long)
+V.Local.sCenturyOrig.Declare(String)
+V.Local.iCenturyDue.Declare(Long)
+V.Local.sCenturyDue.Declare(String)
+V.Local.sReqDate.Declare(String)
+
+'set the date
+v.Local.sdate.Set(v.Screen.Form!dtp1.Value)
+f.Intrinsic.String.Format(v.Local.sdate,"MMDDYY",v.Local.sdate)
+V.Local.sAddDate.Set(V.Ambient.Date)
+F.Intrinsic.Date.Year(V.Screen.Form!dtp1.Value,V.Local.iCenturyDue)
+F.Intrinsic.String.Left(V.Local.iCenturyDue,2,V.Local.sCenturyDue)
+F.Intrinsic.String.Format(V.Local.sAddDate,"MMDDYY",V.Local.sReqDate)
+F.Intrinsic.String.Format(V.Local.sAddDate,"YYYYMMDD",V.Local.sAddDate)
+F.Intrinsic.Date.Year(V.Ambient.Date,V.Local.iCenturyOrig)
+F.Intrinsic.String.Left(V.Local.iCenturyOrig,2,V.Local.sCenturyOrig)
+
+'This is not the wisest idea. We need to go to autonumbering option to check and see what the last requisition # was. From there we can get the next PO Req number. We will then need to update that value.
+'f.Intrinsic.String.Build("Select MAX(PO_REQ_NUMBER) as PO_REQ_NUMBER from PURCHASE_REQS where PO_REQ_NUMBER <> '{0}'group by PO_REQ_NUMBER order by PO_REQ_NUMBER DESC","",v.Local.ssql)
+' F.ODBC.Connection!conx.OpenRecordsetRO("rst",V.Local.ssql)
+'f.Intrinsic.Control.If(v.ODBC.conx!rst.EOF,=,False)
+'	'set the req number to a local variable
+'	v.Local.iREQ.Set(v.ODBC.conx!rst.FieldValTrim!PO_REQ_NUMBER)
+'f.Intrinsic.Control.Else
+'	f.Intrinsic.Control.CallSub(form_unload)
+'f.Intrinsic.Control.EndIf
+'f.ODBC.conx!rst.Close
+F.ODBC.Connection!conx.ExecuteAndReturn("SELECT F_LONG FROM OP_HEADER WHERE ID = '400302'",V.Local.iReq)
+
+'add one to the number, pad and set as a local variable
+f.Intrinsic.Math.Add(v.Local.iREQ,1,v.Local.iREQ)
+v.Local.sreq.Set(v.Local.iREQ)
+'Update the requisition table.
+F.Intrinsic.String.Build("UPDATE OP_HEADER SET F_LONG = '{0}' WHERE ID = '400302'",V.Local.iReq,V.Local.sSql)
+
+f.Intrinsic.String.LPad(v.Local.sreq.Trim,"0",6,v.Local.sreq)
+
+'query for the data to later write a new record
+f.Intrinsic.String.Build("Select * from REQ_HIST where REQ_NUM = '{0}'",v.Global.sreq.Trim,v.Local.ssql)
+F.ODBC.Connection!conx.openrecordsetrO("rst",V.Local.ssql)
+F.Intrinsic.Control.DoUntil(V.ODBC.conx!rst.EOF,=,True)
+	'Query the purchase req table using the new req number and begin adding the information from the selected PO req
+	f.Intrinsic.String.Build("Select * from PURCHASE_REQS where PO_REQ_NUMBER = '{0}'",v.Local.sreq.Trim,v.Local.supdatesql)
+	F.ODBC.Connection!conx.openrecordsetrw("rstUpdate",V.Local.supdatesql)
+	F.ODBC.conx!rstUpdate.AddNew
+	F.ODBC.conx!rstUpdate.Set!PO_REQ_NUMBER(V.Local.sreq.Trim)
+	f.ODBC.conx!rstUpdate.Set!PO_REQ_LINE(v.ODBC.conx!rst.FieldValTrim!REQ_LINE)
+	f.ODBC.conx!rstUpdate.Set!PART(v.ODBC.conx!rst.FieldValTrim!PART)
+	f.ODBC.conx!rstUpdate.Set!LOCATION(v.ODBC.conx!rst.FieldValTrim!LOCN)
+	f.ODBC.conx!rstUpdate.Set!VENDOR(v.ODBC.conx!rst.FieldValTrim!VENDOR)
+	f.ODBC.conx!rstUpdate.Set!GL_ACCOUNT(v.ODBC.conx!rst.FieldValTrim!GL_ACCT)
+	f.ODBC.conx!rstUpdate.Set!UM(v.ODBC.conx!rst.FieldValTrim!UM)
+	f.ODBC.conx!rstUpdate.Set!DATE_ORIGINAL(V.Local.sReqDate)
+	f.ODBC.conx!rstUpdate.Set!DATE_DUE(v.Local.sdate)
+	f.ODBC.conx!rstUpdate.Set!DESCRIPTION(v.ODBC.conx!rst.FieldValTrim!DESCR)
+	f.ODBC.conx!rstUpdate.Set!UNIT_PRICE(v.ODBC.conx!rst.FieldValTrim!UNIT_PRICE)
+	'set part and location to local variables
+	v.Local.spart.Set(v.ODBC.conx!rst.FieldValTrim!PART)
+	v.Local.sloc.Set(v.ODBC.conx!rst.FieldValTrim!LOCN)
+	'be sure to get the current qty on hand for the part in inventory
+	f.Intrinsic.String.Build("Select QTY_ONHAND from V_INVENTORY_MSTR where PART = '{0}' and LOCATION = '{1}'",v.Local.sPart.Trim,v.Local.sLoc.Trim,v.Local.sqtysql)
+ 	F.ODBC.Connection!conx.OpenRecordsetRO("rstqty",V.Local.sqtysql)
+	f.Intrinsic.Control.If(v.ODBC.conx!rstqty.EOF,=,False)
+		v.Local.fqty.Set(v.ODBC.conx!rstqty.FieldValFloat!QTY_ONHAND)
+	f.Intrinsic.Control.Else
+		v.Local.fqty.Set(0)
+	f.Intrinsic.Control.EndIf
+	f.ODBC.conx!rstqty.Close
+	'NOTE*** FILLER AND JOB/SUFFIX INFORMATION NOT SENT OVER
+	'add the rest of the fields
+	f.ODBC.conx!rstUpdate.Set!QUANTITY(v.ODBC.conx!rst.FieldValTrim!Qty)
+	f.ODBC.conx!rstUpdate.Set!BUYER(v.ODBC.conx!rst.FieldValTrim!BUYER)
+	f.ODBC.conx!rstUpdate.Set!PRODUCT_LINE(v.ODBC.conx!rst.FieldValTrim!PROD_LINE)
+	f.ODBC.conx!rstUpdate.Set!SORT_CODE(v.ODBC.conx!rst.FieldValTrim!SORT_CODE)
+	f.ODBC.conx!rstUpdate.Set!USER_REF(v.ODBC.conx!rst.FieldValTrim!USER_REF)
+	f.ODBC.conx!rstUpdate.Set!INVENTORY_UM(v.ODBC.conx!rst.FieldValTrim!INV_UM)
+	f.ODBC.conx!rstUpdate.Set!INVENTORY_QTY(v.Local.fqty)
+	f.ODBC.conx!rstUpdate.Set!USERID_ORIGINATOR(V.Caller.User)
+	f.ODBC.conx!rstUpdate.Set!INVENTORY_COST(v.ODBC.conx!rst.FieldValTrim!INV_COST)
+	f.ODBC.conx!rstUpdate.Set!SALESPERSON(v.ODBC.conx!rst.FieldValTrim!SALESMAN)
+	f.ODBC.conx!rstUpdate.Set!EXCH_CURR(v.ODBC.conx!rst.FieldValTrim!EXCH_CURR)
+	f.ODBC.conx!rstUpdate.Set!DATE_EXCHANGE(v.ODBC.conx!rst.FieldValTrim!EXCH_DATE)
+	f.ODBC.conx!rstUpdate.Set!EXCHANGE_RATE(v.ODBC.conx!rst.FieldValTrim!EXCH_RATE)
+	f.ODBC.conx!rstUpdate.Set!EXCHANGE_COST(v.ODBC.conx!rst.FieldValTrim!EXCH_COST)
+	f.ODBC.conx!rstUpdate.Set!MFG_PART_NO(v.ODBC.conx!rst.FieldValTrim!MFG_PART_NO)
+	f.ODBC.conx!rstUpdate.Set!MFG_NAME(v.ODBC.conx!rst.FieldValTrim!MFG_NAME)
+	f.ODBC.conx!rstUpdate.Set!COST_SOURCE(v.ODBC.conx!rst.FieldValTrim!COST_SOURCE)
+	f.ODBC.conx!rstUpdate.Set!DATE_ADDED(V.Local.sAddDate)
+	f.ODBC.conx!rstUpdate.Set!TIME_ADDED(v.ODBC.conx!rst.FieldValTrim!TIME_ADDED)
+	f.ODBC.conx!rstUpdate.Set!PUR_TAX(v.ODBC.conx!rst.FieldValTrim!PUR_TAX)
+	f.ODBC.conx!rstUpdate.Set!VEN_TAX(v.ODBC.conx!rst.FieldValTrim!INV_TAX)
+	f.ODBC.conx!rstUpdate.Set!TAXABLE(0)
+'	f.ODBC.conx!rstUpdate.Set!TAX_CODE(v.ODBC.conx!rst.FieldValTrim!TAX_CODE)
+	f.ODBC.conx!rstUpdate.Set!VAT_RULE(v.ODBC.conx!rst.FieldValTrim!VAT_RULE)
+	f.ODBC.conx!rstUpdate.Set!USE_PURPOSE(v.ODBC.conx!rst.FieldValTrim!USE_PURPOSE)
+	f.ODBC.conx!rstUpdate.Set!USE_TAX(v.ODBC.conx!rst.FieldValTrim!USE_TAX)
+	f.ODBC.conx!rstUpdate.Set!PUR_TAX_PER_PIECE(v.ODBC.conx!rst.FieldValTrim!PUR_TAX_PER_PIECE)
+	f.ODBC.conx!rstUpdate.Set!VEN_TAX_PER_PIECE(v.ODBC.conx!rst.FieldValTrim!VEN_TAX_PER_PIECE)
+	f.ODBC.conx!rstUpdate.Set!DT_ORIG_CC(V.Local.sCenturyOrig)
+	f.ODBC.conx!rstUpdate.Set!DT_DUE_CC(V.Local.sCenturyDue)
+		
+	'update and close
+	f.ODBC.conx!rstUpdate.Update
+	f.ODBC.conx!rstUpdate.Close
+	f.ODBC.conx!rst.MoveNext
+	
+	F.ODBC.Connection!conx.Execute(V.Local.sSQL)
+f.Intrinsic.Control.Loop
+
+'close connection
+f.ODBC.conx!rst.Close
+
+'clear the textbox
+gui.Form.txt1.Text("")
+
+'inform the user it was created
+f.Intrinsic.UI.Msgbox("New Req Created")
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdBrowse_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4236_PREQ.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.cmdCreate_Click.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$WAW$}$10/31/2016 7:55:53 AM$}$False
+Program.Sub.Comments.End
